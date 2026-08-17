@@ -1,0 +1,115 @@
+================================================================================
+                     HAWK MOTOR - PRODUCTION DEPLOYMENT
+                       KURULUM & SİSTEM REHBERİ (A-Z)
+================================================================================
+
+[1] MİMARİ VE SİSTEM GEREKSİNİMLERİ
+--------------------------------------------------------------------------------
+* Sunucu Türü: Kalıcı disk depolaması (Persistent Storage) olan herhangi bir VPS,
+  VDS veya Dedicated Server (örn: Ubuntu Server 22.04 LTS).
+  **ÖNEMLİ:** SQLite veritabanı dosya tabanlı çalıştığı için Vercel veya Netlify
+  gibi Serverless (sunucusuz) geçici diskli sistemlerde kullanmayınız!
+* Node.js Sürümü: v18.x veya v20.x (LTS)
+* Veritabanı: Prisma ORM ile SQLite (prisma/dev.db)
+* RAM: Minimum 1 GB RAM (Next.js derleme/build sırasında kilitlenme yaşamamak 
+  için sunucuda 2 GB Swap alanı oluşturulması tavsiye edilir).
+
+[2] PLESK PANEL İLE KURULUM (ÖNERİLEN KONTROL PANELİ)
+--------------------------------------------------------------------------------
+1. Dosya Yöneticisi aracılığıyla projedeki zip içeriğini sunucu 'httpdocs'
+   dizinine yükleyip çıkartın. (.next ve node_modules dizinlerini dahil etmeyin).
+2. Plesk 'Node.js' eklentisini açın ve şu ayarları yapın:
+   - Node.js Version: 20.x (LTS)
+   - Application Mode: production
+   - Application Root: /httpdocs
+   - Document Root: /httpdocs/public
+   - Startup File: node_modules/next/dist/bin/next
+3. "NPM Install" butonuna basarak kütüphanelerin kurulmasını bekleyin.
+4. "Environment Variables" (Çevre Değişkenleri) alanına şunları ekleyin:
+   - NODE_ENV = production
+   - JWT_SECRET = [Güçlü_Rastgele_Bir_Şifre]
+5. Sunucu Terminalini veya Plesk SSH ekranını açarak dizine gidin:
+   cd /var/www/vhosts/alanadiniz.com/httpdocs
+6. Veritabanını hazırlayın ve tohumlayın (Seed):
+   npx prisma db push
+   npx prisma db seed
+7. Uygulamayı derleyin:
+   npm run build
+8. Plesk Node.js paneline dönüp "Restart App" butonuna tıklayın.
+
+[3] LINUX VPS / SUNUCU ÜZERİNE MANUEL KURULUM
+--------------------------------------------------------------------------------
+1. SSH ile sunucunuza bağlanın, güncellemeleri ve Node.js v20 sürümünü kurun:
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install -y curl git build-essential
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt install -y nodejs
+
+2. Proje dosyalarını '/var/www/hawk-motor' altına yerleştirin ve bağımlılıkları 
+   yükleyin:
+   cd /var/www/hawk-motor
+   npm install --production=false
+
+3. Veritabanını oluşturup varsayılan tohum verilerini yükleyin:
+   npx prisma db push
+   npx prisma db seed
+
+4. Uygulamayı production için derleyin:
+   npm run build
+
+5. PM2 (Process Manager) kurun ve uygulamayı arka planda başlatın:
+   sudo npm install -g pm2
+   pm2 start "npm run start" --name "hawk-motor"
+   pm2 save
+   pm2 startup
+
+6. Nginx ters proxy yapılandırması:
+   sudo apt install -y nginx
+   sudo nano /etc/nginx/sites-available/hawk-motor
+
+   -- Aşağıdaki blokları alan adınıza göre uyarlayıp yapıştırın:
+   server {
+       listen 80;
+       server_name alanadiniz.com www.alanadiniz.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location /uploads/ {
+           alias /var/www/hawk-motor/public/uploads/;
+           expires 30d;
+           add_header Cache-Control "public, no-transform";
+       }
+   }
+   -- Kaydedip kapatın (CTRL+O, Enter, CTRL+X).
+
+7. Nginx yapılandırmasını etkinleştirin ve SSL sertifikasını LetsEncrypt ile 
+   tamamlayın:
+   sudo ln -s /etc/nginx/sites-available/hawk-motor /etc/nginx/sites-enabled/
+   sudo rm /etc/nginx/sites-enabled/default
+   sudo nginx -t
+   sudo systemctl restart nginx
+   
+   # SSL Kurulumu
+   sudo apt install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d alanadiniz.com -d www.alanadiniz.com
+
+[4] ADMIN GİRİŞ BİLGİLERİ VE EŞLEŞMELER
+--------------------------------------------------------------------------------
+- Admin Paneli Giriş Yolu: http://alanadiniz.com/admin
+- Varsayılan Giriş E-Postası: admin@hawkmotor.com
+- Varsayılan Giriş Şifresi: HawkMotor2026!
+- Yerel Görsel Kayıt Dizin Yolu: public/uploads
+
+================================================================================
+                    HAWK MOTOR - PREMIUM WEB APPLICATIONS
+================================================================================

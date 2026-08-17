@@ -1,0 +1,165 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Brand {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  models    BrandModel[]
+  createdAt DateTime     @default(now())
+}
+
+model BrandModel {
+  id        String   @id @default(uuid())
+  name      String
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([name, brandId])
+}
+
+model Motorcycle {
+  id             String   @id @default(uuid())
+  name           String
+  brand          String
+  model          String
+  year           Int
+  cc             Int
+  km             Int
+  condition      String   // "SIFIR" | "IKINCI_EL"
+  documentStatus String   // "Ruhsatli" | "Evraksiz" etc.
+  price          Float
+  oldPrice       Float?
+  stock          String   // "Stokta Var" | "Sınırlı Stok" | "Tükendi"
+  shortDesc      String
+  description    String
+  specs          String   // Stringified JSON: e.g. '{"motor":"V4","guc":"210 HP"}'
+  image          String
+  gallery        String   // Stringified JSON array of image URLs
+  status         String   // "Premium" | "Kampanyalı" etc.
+  isFeatured     Boolean  @default(false)
+  isCampaign     Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SparePart {
+  id               String   @id @default(uuid())
+  name             String
+  brand            String
+  category         String   // Category slug/name e.g. "yedek-parca", "aksesuar"
+  price            Float
+  oldPrice         Float?
+  stock            String   // "Stokta Var" | "Sınırlı Stok"
+  shortDesc        String
+  description      String
+  image            String
+  gallery          String   // Stringified JSON array of image URLs
+  compatibleModels String   // Stringified JSON array of strings: e.g. '["Ducati","BMW"]'
+  isFeatured       Boolean  @default(false)
+  isCampaign       Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  order            Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PaymentSetting {
+  id                 String   @id @default("global-payment")
+  bankName           String
+  branch             String
+  accountHolder      String
+  iban               String
+  description        String
+  cardPaymentsActive Boolean  @default(false)
+  bankPaymentsActive Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+model LiveSupportSetting {
+  id                 String   @id @default("global-livesupport")
+  aiActive           Boolean  @default(true)
+  aiName             String   @default("HAWK AI")
+  maintenanceMessage String
+  whatsappMessage    String
+  updatedAt          DateTime @updatedAt
+}
+
+model SiteSetting {
+  id                String   @id @default("global-setting")
+  logoUrl           String?
+  siteName          String
+  heroTitle         String
+  heroDescription   String
+  bannerUrl         String?
+  slogan            String
+  phone             String
+  phoneFormatted    String
+  whatsapp          String
+  whatsappFormatted String
+  address           String
+  email             String?
+  mapUrl            String?
+  workingHours      String   // Stringified JSON array of days and hours
+  socialLinks       String   // Stringified JSON object of social links
+  footerText        String
+  aboutText         String
+  contactText       String
+  kullaniciText     String?
+  gizlilikText      String?
+  kvkkText          String?
+  mesafeliText      String?
+  hukukText         String?
+  aboutTitle        String?
+  aboutDesc         String?
+  aboutValues       String?  // Stringified JSON
+  aboutMilestones   String?  // Stringified JSON
+  sparePartsActive  Boolean  @default(true)
+  showProductPrices  Boolean @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+model AnalyticsLog {
+  id        String   @id @default(uuid())
+  eventType String   // "WHATSAPP" | "PHONE" | "IBAN" | "RECEIPT"
+  eventName String   // E.g. product name or target location
+  timestamp DateTime @default(now())
+}
+
+model LegalDocument {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
